@@ -92,8 +92,8 @@ class Produto {  constructor(dados) {
           SELECT 1 FROM promocoes_relampago pr 
           WHERE pr.produto_id = produtos.id 
           AND pr.ativo = 1 
-          AND pr.data_inicio <= NOW() 
-          AND pr.data_fim >= NOW()
+          AND pr.data_inicio <= UTC_TIMESTAMP() 
+          AND pr.data_fim >= UTC_TIMESTAMP()
         )`;
       }
 
