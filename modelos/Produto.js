@@ -344,8 +344,7 @@ class Produto {  constructor(dados) {
       console.error('Erro ao obter estatísticas:', erro);
       throw new Error('Erro interno do servidor ao obter estatísticas');
     }
-  }
-  // Método específico para buscar produtos em destaque
+  }  // Método específico para buscar produtos em destaque
   static async buscarProdutosDestaque(limite = 8) {
     console.log('🚀 [MODELO] buscarProdutosDestaque chamado com limite:', limite);
     
@@ -354,6 +353,41 @@ class Produto {  constructor(dados) {
       console.log('🔍 [MODELO] Verificando conexão:', typeof conexao);
       console.log('🔍 [MODELO] Método executarConsulta disponível:', typeof conexao.executarConsulta);
       
+      // Primeiro, verificar se a tabela promocoes_relampago existe
+      console.log('🔍 [MODELO] Verificando estrutura da tabela promocoes_relampago...');
+      let estruturaTabela;
+      try {
+        estruturaTabela = await conexao.executarConsulta('DESCRIBE promocoes_relampago');
+        console.log('✅ [MODELO] Tabela promocoes_relampago existe com', estruturaTabela.length, 'colunas');
+        
+        // Verificar se a coluna 'ativo' existe
+        const colunaAtivo = estruturaTabela.find(col => col.Field === 'ativo');
+        console.log('🔍 [MODELO] Coluna ativo existe:', !!colunaAtivo);
+        
+        if (!colunaAtivo) {
+          console.log('⚠️ [MODELO] Coluna ativo não encontrada, listando colunas disponíveis:');
+          estruturaTabela.forEach(col => console.log(`- ${col.Field} (${col.Type})`));
+        }
+      } catch (erroTabela) {
+        console.error('❌ [MODELO] Erro ao verificar tabela promocoes_relampago:', erroTabela.message);
+        
+        // Se a tabela não existe, retornar produtos simples baseado em critérios alternativos
+        console.log('🔄 [MODELO] Usando estratégia alternativa - produtos com desconto...');
+        const sqlAlternativo = `
+          SELECT * FROM produtos 
+          WHERE preco_antigo > preco_atual 
+          AND disponivel = 1 
+          AND quantidade_estoque > 0
+          ORDER BY (preco_antigo - preco_atual) DESC
+          LIMIT ?
+        `;
+        
+        const resultados = await conexao.executarConsulta(sqlAlternativo, [limite]);
+        console.log('✅ [MODELO] Produtos com desconto encontrados:', resultados.length);
+        return resultados.map(produto => new Produto(produto));
+      }
+      
+      // Query principal com verificação de existência de coluna
       const sql = `
         SELECT p.* FROM produtos p
         INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
@@ -388,7 +422,26 @@ class Produto {  constructor(dados) {
       console.error('❌ [MODELO] Código SQL:', erro.code);
       console.error('❌ [MODELO] Estado SQL:', erro.sqlState);
       console.error('❌ [MODELO] Mensagem SQL:', erro.sqlMessage);
-      throw new Error(`Erro interno do servidor ao buscar produtos em destaque: ${erro.message}`);
+      
+      // Em caso de erro com a tabela promocoes_relampago, usar estratégia de fallback
+      console.log('🔄 [MODELO] Tentando estratégia alternativa...');
+      try {
+        const sqlFallback = `
+          SELECT * FROM produtos 
+          WHERE preco_antigo > preco_atual 
+          AND disponivel = 1 
+          AND quantidade_estoque > 0
+          ORDER BY (preco_antigo - preco_atual) DESC
+          LIMIT ?
+        `;
+        
+        const resultadosFallback = await conexao.executarConsulta(sqlFallback, [limite]);
+        console.log('✅ [MODELO] Fallback executado com sucesso:', resultadosFallback.length, 'produtos');
+        return resultadosFallback.map(produto => new Produto(produto));
+      } catch (erroFallback) {
+        console.error('❌ [MODELO] Erro também no fallback:', erroFallback.message);
+        throw new Error(`Erro interno do servidor ao buscar produtos em destaque: ${erro.message}`);
+      }
     }
   }
 }
