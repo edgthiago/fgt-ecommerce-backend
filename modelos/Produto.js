@@ -386,9 +386,9 @@ class Produto {  constructor(dados) {
         console.log('✅ [MODELO] Produtos com desconto encontrados:', resultados.length);
         return resultados.map(produto => new Produto(produto));
       }
-      
-      // Query principal com verificação de existência de coluna
-      const sql = `
+        // Query principal com múltiplas estratégias de fallback
+      console.log('🔍 [MODELO] Tentativa 1: Query com alias pr');
+      let sql = `
         SELECT p.* FROM produtos p
         INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
         WHERE pr.ativo = 1 
@@ -400,11 +400,69 @@ class Produto {  constructor(dados) {
         LIMIT ?
       `;
       
-      console.log('🔍 [MODELO] SQL preparado:', sql);
-      console.log('🔍 [MODELO] Parâmetros:', [limite]);
-      
-      console.log('🔍 [MODELO] Executando consulta...');
-      const resultados = await conexao.executarConsulta(sql, [limite]);
+      let resultados;
+      try {
+        console.log('🔍 [MODELO] SQL preparado:', sql);
+        console.log('🔍 [MODELO] Parâmetros:', [limite]);
+        
+        console.log('🔍 [MODELO] Executando consulta...');
+        resultados = await conexao.executarConsulta(sql, [limite]);
+        
+        console.log('✅ [MODELO] Query original funcionou');
+      } catch (erroOriginal) {
+        console.log('⚠️ [MODELO] Query original falhou:', erroOriginal.message);
+        console.log('🔍 [MODELO] Tentativa 2: Query sem alias');
+        
+        // Tentativa 2: Query sem alias
+        sql = `
+          SELECT p.* FROM produtos p
+          INNER JOIN promocoes_relampago ON p.id = promocoes_relampago.produto_id
+          WHERE promocoes_relampago.ativo = 1 
+          AND promocoes_relampago.data_inicio <= NOW() 
+          AND promocoes_relampago.data_fim >= NOW()
+          AND p.disponivel = 1
+          AND p.quantidade_estoque > 0
+          ORDER BY p.id ASC
+          LIMIT ?
+        `;
+        
+        try {
+          resultados = await conexao.executarConsulta(sql, [limite]);
+          console.log('✅ [MODELO] Query sem alias funcionou');
+        } catch (erroSemAlias) {
+          console.log('⚠️ [MODELO] Query sem alias falhou:', erroSemAlias.message);
+          console.log('🔍 [MODELO] Tentativa 3: Query em duas etapas');
+          
+          // Tentativa 3: Query em duas etapas
+          const sqlIds = `
+            SELECT DISTINCT produto_id FROM promocoes_relampago 
+            WHERE ativo = 1 
+            AND data_inicio <= NOW() 
+            AND data_fim >= NOW()
+          `;
+          
+          const idsPromocao = await conexao.executarConsulta(sqlIds);
+          
+          if (idsPromocao.length === 0) {
+            console.log('⚠️ [MODELO] Nenhum produto em promoção encontrado');
+            resultados = [];
+          } else {
+            const ids = idsPromocao.map(row => row.produto_id);
+            const placeholders = ids.map(() => '?').join(',');
+            const sqlProdutos = `
+              SELECT * FROM produtos 
+              WHERE id IN (${placeholders}) 
+              AND disponivel = 1 
+              AND quantidade_estoque > 0
+              ORDER BY id ASC
+              LIMIT ?
+            `;
+            
+            resultados = await conexao.executarConsulta(sqlProdutos, [...ids, limite]);
+            console.log('✅ [MODELO] Query em duas etapas funcionou');
+          }
+        }
+      }
       
       console.log('✅ [MODELO] Consulta executada com sucesso');
       console.log('✅ [MODELO] Número de resultados:', resultados ? resultados.length : 'null/undefined');
