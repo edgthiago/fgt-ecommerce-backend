@@ -91,6 +91,13 @@ router.post('/registrar', async (req, res) => {
   }
 });
 
+// POST /api/auth/registro - Alias para registrar (compatibilidade)
+router.post('/registro', async (req, res) => {
+  // Redirecionar para a rota principal de registro
+  req.url = '/registrar';
+  return router.handle(req, res);
+});
+
 // POST /api/auth/login - Fazer login
 router.post('/login', async (req, res) => {
   try {

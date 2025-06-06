@@ -38,6 +38,78 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/produtos/destaques - Buscar produtos em destaque (público)
+router.get('/destaques', async (req, res) => {
+  try {
+    const filtros = {
+      apenas_destaques: true,
+      apenas_em_estoque: true,
+      limite: req.query.limite ? parseInt(req.query.limite) : 8
+    };
+
+    const produtos = await Produto.buscarTodos(filtros);
+    
+    res.json({
+      sucesso: true,
+      dados: produtos,
+      total: produtos.length
+    });
+  } catch (erro) {
+    console.error('Erro ao buscar produtos em destaque:', erro);
+    res.status(500).json({
+      sucesso: false,
+      mensagem: 'Erro interno do servidor ao buscar produtos em destaque'
+    });
+  }
+});
+
+// GET /api/produtos/categoria/:categoria - Buscar produtos por categoria (público)
+router.get('/categoria/:categoria', async (req, res) => {
+  try {
+    const categoria = req.params.categoria;
+    const filtros = {
+      categorias: [categoria],
+      apenas_em_estoque: true,
+      limite: req.query.limite ? parseInt(req.query.limite) : 20,
+      offset: req.query.offset ? parseInt(req.query.offset) : 0,
+      ordenar_por: req.query.ordenar_por || 'nome'
+    };
+
+    const produtos = await Produto.buscarTodos(filtros);
+    
+    res.json({
+      sucesso: true,
+      dados: produtos,
+      categoria: categoria,
+      total: produtos.length
+    });
+  } catch (erro) {
+    console.error('Erro ao buscar produtos por categoria:', erro);
+    res.status(500).json({
+      sucesso: false,
+      mensagem: 'Erro interno do servidor ao buscar produtos por categoria'
+    });
+  }
+});
+
+// GET /api/produtos/admin/estatisticas - Obter estatísticas (apenas colaborador+)
+router.get('/admin/estatisticas', verificarAutenticacao, middleware.verificarAcessoAdmin(PERMISSOES.VERIFICAR_ESTOQUE), async (req, res) => {
+  try {
+    const estatisticas = await Produto.obterEstatisticas();
+    
+    res.json({
+      sucesso: true,
+      dados: estatisticas
+    });
+  } catch (erro) {
+    console.error('Erro ao obter estatísticas:', erro);
+    res.status(500).json({
+      sucesso: false,
+      mensagem: 'Erro interno do servidor ao obter estatísticas'
+    });
+  }
+});
+
 // GET /api/produtos/:id - Buscar produto específico (público)
 router.get('/:id', async (req, res) => {
   try {
@@ -249,24 +321,6 @@ router.delete('/:id', verificarAutenticacao, middleware.verificarAcessoAdmin(PER
     res.status(500).json({
       sucesso: false,
       mensagem: erro.message || 'Erro interno do servidor ao deletar produto'
-    });
-  }
-});
-
-// GET /api/produtos/estatisticas - Obter estatísticas (apenas colaborador+)
-router.get('/admin/estatisticas', verificarAutenticacao, middleware.verificarAcessoAdmin(PERMISSOES.VERIFICAR_ESTOQUE), async (req, res) => {
-  try {
-    const estatisticas = await Produto.obterEstatisticas();
-    
-    res.json({
-      sucesso: true,
-      dados: estatisticas
-    });
-  } catch (erro) {
-    console.error('Erro ao obter estatísticas:', erro);
-    res.status(500).json({
-      sucesso: false,
-      mensagem: 'Erro interno do servidor ao obter estatísticas'
     });
   }
 });
