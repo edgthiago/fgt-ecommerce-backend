@@ -4,12 +4,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment files
+# Environment variables
 .env
 .env.local
+.env.production
 .env.development
-.env.test
-.env.production.local
+
+# Logs
+logs
+*.log
 
 # Runtime data
 pids
@@ -17,47 +20,57 @@ pids
 *.seed
 *.pid.lock
 
-# Logs
-logs/
-*.log
-
 # Coverage directory used by tools like istanbul
 coverage/
+*.lcov
+
+# nyc test coverage
 .nyc_output
 
-# Runtime files
-.cache/
-.tmp/
+# Dependency directories
+node_modules/
+jspm_packages/
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Optional npm cache directory
+.npm
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Optional REPL history
+.node_repl_history
 
-# Build output
-dist/
-build/
+# Output of 'npm pack'
+*.tgz
 
-# Temporary files
-*.tmp
-temp/
+# Yarn Integrity file
+.yarn-integrity
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# dotenv environment variables file
+.env
+.env.test
 
-# Backups
-backups/
-*.bak
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Railway
+.railway/
