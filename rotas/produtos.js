@@ -41,13 +41,19 @@ router.get('/', async (req, res) => {
 // GET /api/produtos/destaques - Buscar produtos em destaque (público)
 router.get('/destaques', async (req, res) => {
   try {
+    console.log('🔍 Iniciando busca por produtos em destaque...');
+    
     const filtros = {
       apenas_destaques: true,
       apenas_em_estoque: true,
       limite: req.query.limite ? parseInt(req.query.limite) : 8
     };
 
+    console.log('🔍 Filtros aplicados:', filtros);
+    
     const produtos = await Produto.buscarTodos(filtros);
+    
+    console.log('✅ Produtos encontrados:', produtos.length);
     
     res.json({
       sucesso: true,
@@ -55,10 +61,12 @@ router.get('/destaques', async (req, res) => {
       total: produtos.length
     });
   } catch (erro) {
-    console.error('Erro ao buscar produtos em destaque:', erro);
+    console.error('❌ Erro detalhado ao buscar produtos em destaque:', erro);
+    console.error('❌ Stack trace:', erro.stack);
     res.status(500).json({
       sucesso: false,
-      mensagem: 'Erro interno do servidor ao buscar produtos em destaque'
+      mensagem: 'Erro interno do servidor ao buscar produtos em destaque',
+      erro: process.env.NODE_ENV === 'development' ? erro.message : undefined
     });
   }
 });
