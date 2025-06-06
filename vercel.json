@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "name": "fgt-ecommerce-backend",
+  "builds": [
+    {
+      "src": "servidor-producao.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/health",
+      "dest": "/servidor-producao.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/servidor-producao.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/servidor-producao.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "servidor-producao.js": {
+      "maxDuration": 10
+    }
+  }
+}
