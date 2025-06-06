@@ -78,18 +78,48 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Rotas da API (com fallback se o banco não estiver configurado)
-try {
-  app.use('/api/produtos', require('./rotas/produtos'));
-  app.use('/api/auth', require('./rotas/autenticacao'));
-  app.use('/api/carrinho', require('./rotas/carrinho'));
-  app.use('/api/pedidos', require('./rotas/pedidos'));
-  app.use('/api/promocoes', require('./rotas/promocoes'));
-  app.use('/api/comentarios', require('./rotas/comentarios'));
-  app.use('/api/admin', require('./rotas/admin'));
-} catch (erro) {
-  console.log('⚠️ Algumas rotas não puderam ser carregadas (normal se banco não estiver configurado)');
-}
+// Carregamento seguro das rotas da API
+const carregarRotas = () => {
+  try {
+    // Verificar se os arquivos de rota existem antes de carregar
+    const fs = require('fs');
+    const rotasDisponiveis = [];
+    
+    const rotas = [
+      { path: '/api/produtos', file: './rotas/produtos' },
+      { path: '/api/auth', file: './rotas/autenticacao' },
+      { path: '/api/carrinho', file: './rotas/carrinho' },
+      { path: '/api/pedidos', file: './rotas/pedidos' },
+      { path: '/api/promocoes', file: './rotas/promocoes' },
+      { path: '/api/comentarios', file: './rotas/comentarios' },
+      { path: '/api/admin', file: './rotas/admin' }
+    ];
+    
+    rotas.forEach(rota => {
+      try {
+        if (fs.existsSync(rota.file + '.js')) {
+          app.use(rota.path, require(rota.file));
+          rotasDisponiveis.push(rota.path);
+          console.log(`✅ Rota carregada: ${rota.path}`);
+        } else {
+          console.log(`⚠️ Arquivo não encontrado: ${rota.file}.js`);
+        }
+      } catch (erro) {
+        console.log(`❌ Erro ao carregar ${rota.path}:`, erro.message);
+      }
+    });
+    
+    console.log(`📝 Total de rotas carregadas: ${rotasDisponiveis.length}`);
+    return rotasDisponiveis;
+    
+  } catch (erro) {
+    console.log('⚠️ Erro geral ao carregar rotas:', erro.message);
+    return [];
+  }
+};
+
+// Carregar rotas
+const rotasCarregadas = carregarRotas();
 
 // Rota de teste sem banco
 app.get('/api/test', (req, res) => {
@@ -103,7 +133,37 @@ app.get('/api/test', (req, res) => {
       tem_database_url: !!process.env.DATABASE_URL,
       tem_mysql_host: !!process.env.MYSQLHOST,
       tem_jwt_secret: !!process.env.JWT_SECRET
-    }
+    },
+    rotas_carregadas: rotasCarregadas || []
+  });
+});
+
+// Rota de diagnóstico completo
+app.get('/api/diagnostico', (req, res) => {
+  const fs = require('fs');
+  
+  res.json({
+    sucesso: true,
+    timestamp: new Date().toISOString(),
+    servidor: {
+      versao_node: process.version,
+      plataforma: process.platform,
+      uptime: Math.floor(process.uptime()),
+      memoria: process.memoryUsage()
+    },
+    variaveis_ambiente: {
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: process.env.PORT,
+      tem_variaveis_banco: !!(process.env.DB_HOST || process.env.DATABASE_URL || process.env.MYSQLHOST),
+      tem_jwt_secret: !!process.env.JWT_SECRET
+    },
+    arquivos: {
+      existe_pasta_rotas: fs.existsSync('./rotas'),
+      existe_pasta_modelos: fs.existsSync('./modelos'),
+      existe_pasta_banco: fs.existsSync('./banco'),
+      package_json: fs.existsSync('./package.json')
+    },
+    rotas_carregadas: rotasCarregadas || []
   });
 });
 
@@ -112,12 +172,12 @@ app.use('*', (req, res) => {
   res.status(404).json({
     sucesso: false,
     mensagem: 'Endpoint não encontrado',
-    endpoint_solicitado: req.originalUrl,
-    endpoints_disponiveis: [
+    endpoint_solicitado: req.originalUrl,    endpoints_disponiveis: [
       'GET /',
       'GET /health',
       'GET /api/info',
-      'GET /api/test'
+      'GET /api/test',
+      'GET /api/diagnostico'
     ]
   });
 });
