@@ -43,15 +43,10 @@ router.get('/destaques', async (req, res) => {
   try {
     console.log('🔍 Iniciando busca por produtos em destaque...');
     
-    const filtros = {
-      apenas_destaques: true,
-      apenas_em_estoque: true,
-      limite: req.query.limite ? parseInt(req.query.limite) : 8
-    };
-
-    console.log('🔍 Filtros aplicados:', filtros);
+    const limite = req.query.limite ? parseInt(req.query.limite) : 8;
+    console.log('🔍 Limite definido:', limite);
     
-    const produtos = await Produto.buscarTodos(filtros);
+    const produtos = await Produto.buscarProdutosDestaque(limite);
     
     console.log('✅ Produtos encontrados:', produtos.length);
     

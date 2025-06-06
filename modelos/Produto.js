@@ -345,6 +345,29 @@ class Produto {  constructor(dados) {
       throw new Error('Erro interno do servidor ao obter estatísticas');
     }
   }
+
+  // Método específico para buscar produtos em destaque
+  static async buscarProdutosDestaque(limite = 8) {
+    try {
+      const sql = `
+        SELECT p.* FROM produtos p
+        INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
+        WHERE pr.ativo = 1 
+        AND pr.data_inicio <= UTC_TIMESTAMP() 
+        AND pr.data_fim >= UTC_TIMESTAMP()
+        AND p.disponivel = 1
+        AND p.quantidade_estoque > 0
+        ORDER BY p.id ASC
+        LIMIT ?
+      `;
+      
+      const resultados = await conexao.executarConsulta(sql, [limite]);
+      return resultados.map(produto => new Produto(produto));
+    } catch (erro) {
+      console.error('Erro ao buscar produtos em destaque:', erro);
+      throw new Error('Erro interno do servidor ao buscar produtos em destaque');
+    }
+  }
 }
 
 module.exports = Produto;
