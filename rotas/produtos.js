@@ -3,6 +3,7 @@ const router = express.Router();
 const Produto = require('../modelos/Produto');
 const { verificarAutenticacao, verificarPermissao } = require('../middleware/autenticacao');
 const { middleware, PERMISSOES } = require('../utils/sistema-permissoes');
+const conexao = require('../banco/conexao');
 
 // GET /api/produtos - Buscar produtos (público)
 router.get('/', async (req, res) => {
@@ -34,6 +35,88 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       sucesso: false,
       mensagem: 'Erro interno do servidor ao buscar produtos'
+    });
+  }
+});
+
+// GET /api/produtos/test-query - Teste específico da query problemática
+router.get('/test-query', async (req, res) => {
+  console.log('🧪 [TEST] Testando query específica...');
+  
+  try {
+    const conexao = require('../banco/conexao');
+    
+    // Testar cada parte da query progressivamente
+    console.log('🧪 [TEST] Passo 1: Verificando tabela produtos');
+    const produtos = await conexao.executarConsulta('SELECT COUNT(*) as total FROM produtos');
+    console.log('✅ [TEST] Produtos:', produtos[0].total);
+    
+    console.log('🧪 [TEST] Passo 2: Verificando tabela promocoes_relampago');
+    const promocoes = await conexao.executarConsulta('SELECT COUNT(*) as total FROM promocoes_relampago');
+    console.log('✅ [TEST] Promoções:', promocoes[0].total);
+    
+    console.log('🧪 [TEST] Passo 3: Testando query com alias');
+    const comAlias = await conexao.executarConsulta(`
+      SELECT pr.id, pr.nome, pr.ativo 
+      FROM promocoes_relampago pr 
+      LIMIT 3
+    `);
+    console.log('✅ [TEST] Query com alias funcionou:', comAlias.length);
+    
+    console.log('🧪 [TEST] Passo 4: Testando WHERE com pr.ativo');
+    const comWhere = await conexao.executarConsulta(`
+      SELECT pr.id, pr.nome, pr.ativo 
+      FROM promocoes_relampago pr 
+      WHERE pr.ativo = 1
+      LIMIT 3
+    `);
+    console.log('✅ [TEST] WHERE pr.ativo funcionou:', comWhere.length);
+    
+    console.log('🧪 [TEST] Passo 5: Testando JOIN completo');
+    const joinCompleto = await conexao.executarConsulta(`
+      SELECT p.id, p.nome, pr.ativo
+      FROM produtos p
+      INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
+      WHERE pr.ativo = 1
+      LIMIT 3
+    `);
+    console.log('✅ [TEST] JOIN completo funcionou:', joinCompleto.length);
+    
+    console.log('🧪 [TEST] Passo 6: Query completa original');
+    const queryCompleta = await conexao.executarConsulta(`
+      SELECT p.* FROM produtos p
+      INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
+      WHERE pr.ativo = 1 
+      AND pr.data_inicio <= UTC_TIMESTAMP() 
+      AND pr.data_fim >= UTC_TIMESTAMP()
+      AND p.disponivel = 1
+      AND p.quantidade_estoque > 0
+      ORDER BY p.id ASC
+      LIMIT 8
+    `);
+    console.log('✅ [TEST] Query completa funcionou:', queryCompleta.length);
+    
+    res.json({
+      sucesso: true,
+      teste: {
+        produtos_total: produtos[0].total,
+        promocoes_total: promocoes[0].total,
+        com_alias: comAlias.length,
+        com_where: comWhere.length,
+        join_completo: joinCompleto.length,
+        query_completa: queryCompleta.length,
+        dados_exemplo: queryCompleta.slice(0, 2)
+      }
+    });
+    
+  } catch (erro) {
+    console.error('❌ [TEST] Erro no teste:', erro);
+    res.status(500).json({
+      sucesso: false,
+      erro: erro.message,
+      code: erro.code,
+      sqlState: erro.sqlState,
+      sqlMessage: erro.sqlMessage
     });
   }
 });
@@ -567,6 +650,66 @@ router.get('/:id/estatisticas-comentarios', async (req, res) => {
     res.status(500).json({
       sucesso: false,
       mensagem: 'Erro interno do servidor ao obter estatísticas'
+    });
+  }
+});
+
+// ENDPOINT TEMPORÁRIO PARA DEBUG - REMOVER APÓS CORREÇÃO
+router.get('/teste-destaques', async (req, res) => {
+  console.log('🚀 [TESTE] Endpoint teste-destaques chamado');
+  
+  try {
+    // Teste 1: Verificar se a tabela promocoes_relampago existe e tem dados
+    console.log('🔍 [TESTE] Verificando tabela promocoes_relampago...');
+    const promocoes = await conexao.executarConsulta('SELECT COUNT(*) as total FROM promocoes_relampago');
+    console.log('✅ [TESTE] Total de promoções:', promocoes[0].total);
+    
+    // Teste 2: Verificar se há promoções ativas
+    console.log('🔍 [TESTE] Verificando promoções ativas...');
+    const promocoesAtivas = await conexao.executarConsulta('SELECT COUNT(*) as total FROM promocoes_relampago WHERE ativo = 1');
+    console.log('✅ [TESTE] Total de promoções ativas:', promocoesAtivas[0].total);
+    
+    // Teste 3: Testar a query exata que está falhando
+    console.log('🔍 [TESTE] Testando query exata do modelo...');
+    const sql = `
+      SELECT p.* FROM produtos p
+      INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
+      WHERE pr.ativo = 1 
+      AND pr.data_inicio <= UTC_TIMESTAMP() 
+      AND pr.data_fim >= UTC_TIMESTAMP()
+      AND p.disponivel = 1
+      AND p.quantidade_estoque > 0
+      ORDER BY p.id ASC
+      LIMIT 8
+    `;
+    
+    const produtosDestaque = await conexao.executarConsulta(sql);
+    console.log('✅ [TESTE] Produtos em destaque encontrados:', produtosDestaque.length);
+    
+    // Teste 4: Query simplificada para debug
+    console.log('🔍 [TESTE] Query simplificada...');
+    const querySimples = 'SELECT pr.*, p.nome FROM promocoes_relampago pr LEFT JOIN produtos p ON pr.produto_id = p.id WHERE pr.ativo = 1 LIMIT 5';
+    const resultadoSimples = await conexao.executarConsulta(querySimples);
+    
+    res.json({
+      sucesso: true,
+      teste: {
+        total_promocoes: promocoes[0].total,
+        promocoes_ativas: promocoesAtivas[0].total,
+        produtos_destaque: produtosDestaque.length,
+        query_simples: resultadoSimples,
+        ambiente: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+  } catch (erro) {
+    console.error('❌ [TESTE] Erro no teste:', erro);
+    res.status(500).json({
+      sucesso: false,
+      erro: erro.message,
+      codigo: erro.code,
+      sql_state: erro.sqlState
     });
   }
 });
