@@ -86,24 +86,15 @@ class Produto {  constructor(dados) {
       }      // Filtro por estoque disponível
       if (filtros.apenas_em_estoque) {
         sql += ` AND quantidade_estoque > 0`;
-      }
-
-      // Filtro por produtos em destaque (com promoções ativas)
+      }      // Filtro por produtos em destaque (com promoções ativas)
       if (filtros.apenas_destaques) {
-        sql = `
-          SELECT p.* FROM produtos p
-          INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
-          WHERE pr.ativo = 1 AND pr.data_inicio <= NOW() AND pr.data_fim >= NOW()
-        `;
-        // Reinicia os parâmetros já que mudamos a query base
-        const originalParams = [...parametros];
-        parametros.length = 0;
-        
-        // Reaplicar filtros básicos se necessário
-        if (filtros.termo_pesquisa) {
-          sql += ` AND (p.nome LIKE ? OR p.marca LIKE ?)`;
-          parametros.push(`%${filtros.termo_pesquisa}%`, `%${filtros.termo_pesquisa}%`);
-        }
+        sql += ` AND EXISTS (
+          SELECT 1 FROM promocoes_relampago pr 
+          WHERE pr.produto_id = produtos.id 
+          AND pr.ativo = 1 
+          AND pr.data_inicio <= NOW() 
+          AND pr.data_fim >= NOW()
+        )`;
       }
 
       // Ordenação
