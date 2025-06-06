@@ -980,6 +980,49 @@ router.get('/teste-destaques', async (req, res) => {
   }
 });
 
+// Endpoint temporário para produtos destaque com colunas corretas
+router.get('/destaques-corrigido', async (req, res) => {
+  console.log('🚀 [DESTAQUES-CORRIGIDO] Endpoint chamado');
+  
+  try {
+    const limite = parseInt(req.query.limite) || 8;
+    
+    // Query corrigida usando as colunas corretas (inicio/fim ao invés de data_inicio/data_fim)
+    const sql = `
+      SELECT p.* FROM produtos p
+      INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
+      WHERE pr.ativo = 1 
+      AND pr.inicio <= UTC_TIMESTAMP() 
+      AND pr.fim >= UTC_TIMESTAMP()
+      AND p.disponivel = 1
+      AND p.quantidade_estoque > 0
+      ORDER BY p.id ASC
+      LIMIT ?
+    `;
+    
+    console.log('🔍 [DESTAQUES-CORRIGIDO] Executando query:', sql);
+    console.log('🔍 [DESTAQUES-CORRIGIDO] Parâmetros:', [limite]);
+    
+    const resultados = await conexao.executarConsulta(sql, [limite]);
+    
+    console.log('✅ [DESTAQUES-CORRIGIDO] Produtos encontrados:', resultados.length);
+    
+    res.json({
+      sucesso: true,
+      total: resultados.length,
+      produtos: resultados
+    });
+    
+  } catch (erro) {
+    console.error('❌ [DESTAQUES-CORRIGIDO] Erro:', erro);
+    res.status(500).json({
+      sucesso: false,
+      mensagem: 'Erro ao buscar produtos em destaque',
+      erro: erro.message
+    });
+  }
+});
+
 
 
 module.exports = router;
