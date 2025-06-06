@@ -1,9 +1,9 @@
 {
   "name": "loja-tenis-fgt-backend",
   "version": "1.0.0",
-  "description": "Backend completo para loja de tênis com sistema de autenticação, diferentes níveis de acesso e compliance LGPD",  "main": "server-minimal.js",
+  "description": "Backend completo para loja de tênis com sistema de autenticação, diferentes níveis de acesso e compliance LGPD",  "main": "server.js",
   "scripts": {
-    "start": "node server-minimal.js",
+    "start": "node server.js",
     "dev": "nodemon servidor.js",
     "build": "npm install",
     "test": "jest",
