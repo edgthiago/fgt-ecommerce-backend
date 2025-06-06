@@ -88,6 +88,24 @@ class Produto {  constructor(dados) {
         sql += ` AND quantidade_estoque > 0`;
       }
 
+      // Filtro por produtos em destaque (com promoções ativas)
+      if (filtros.apenas_destaques) {
+        sql = `
+          SELECT p.* FROM produtos p
+          INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
+          WHERE pr.ativo = 1 AND pr.data_inicio <= NOW() AND pr.data_fim >= NOW()
+        `;
+        // Reinicia os parâmetros já que mudamos a query base
+        const originalParams = [...parametros];
+        parametros.length = 0;
+        
+        // Reaplicar filtros básicos se necessário
+        if (filtros.termo_pesquisa) {
+          sql += ` AND (p.nome LIKE ? OR p.marca LIKE ?)`;
+          parametros.push(`%${filtros.termo_pesquisa}%`, `%${filtros.termo_pesquisa}%`);
+        }
+      }
+
       // Ordenação
       if (filtros.ordenar_por) {
         switch (filtros.ordenar_por) {
