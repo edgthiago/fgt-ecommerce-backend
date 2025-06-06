@@ -1023,6 +1023,53 @@ router.get('/destaques-corrigido', async (req, res) => {
   }
 });
 
+// Endpoint para inserir dados de teste nas promoções
+router.get('/inserir-promocoes-teste', async (req, res) => {
+  console.log('📝 [INSERIR-PROMOCOES] Iniciando inserção de dados de teste...');
+  
+  try {
+    // Primeiro, verificar se já existem promoções
+    const promocoesExistentes = await conexao.executarConsulta('SELECT COUNT(*) as total FROM promocoes_relampago');
+    
+    if (promocoesExistentes[0].total > 0) {
+      return res.json({
+        sucesso: true,
+        mensagem: 'Dados de promoção já existem',
+        total_existentes: promocoesExistentes[0].total
+      });
+    }
+    
+    // Inserir promoções de teste usando as colunas corretas
+    const sqlInsert = `
+      INSERT INTO promocoes_relampago 
+      (nome, produto_id, preco_original, preco_promocional, desconto_percentual, inicio, fim, ativa, ativo, criado_em, quantidade_limite, quantidade_vendida, criado_por, data_criacao) 
+      VALUES 
+      ('Flash Sale Nike Air Max', 1, 499.99, 299.99, 40, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), 1, 1, NOW(), 100, 5, 1, NOW()),
+      ('Oferta Especial Adidas', 2, 549.99, 349.99, 35, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 25 DAY), 1, 1, NOW(), 50, 3, 1, NOW()),
+      ('Promoção Puma Running', 3, 399.99, 249.99, 30, NOW(), DATE_ADD(NOW(), INTERVAL 15 DAY), 1, 1, NOW(), 75, 10, 1, NOW())
+    `;
+    
+    await conexao.executarConsulta(sqlInsert);
+    
+    // Verificar se os dados foram inseridos
+    const promocoesInseridas = await conexao.executarConsulta('SELECT COUNT(*) as total FROM promocoes_relampago WHERE ativo = 1');
+    
+    res.json({
+      sucesso: true,
+      mensagem: 'Promoções de teste inseridas com sucesso',
+      total_inseridas: promocoesInseridas[0].total
+    });
+    
+  } catch (erro) {
+    console.error('❌ [INSERIR-PROMOCOES] Erro:', erro);
+    res.status(500).json({
+      sucesso: false,
+      erro: erro.message,
+      codigo: erro.code
+    });
+  }
+});
+
 
 
 module.exports = router;
