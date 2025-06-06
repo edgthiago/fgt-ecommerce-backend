@@ -40,28 +40,56 @@ router.get('/', async (req, res) => {
 
 // GET /api/produtos/destaques - Buscar produtos em destaque (público)
 router.get('/destaques', async (req, res) => {
+  console.log('🚀 [DESTAQUES] Endpoint chamado - Timestamp:', new Date().toISOString());
+  console.log('🚀 [DESTAQUES] Headers:', req.headers);
+  console.log('🚀 [DESTAQUES] Query params:', req.query);
+  
   try {
-    console.log('🔍 Iniciando busca por produtos em destaque...');
+    console.log('🔍 [DESTAQUES] Iniciando busca por produtos em destaque...');
+    
+    // Verificar se o modelo Produto está carregado
+    console.log('🔍 [DESTAQUES] Verificando modelo Produto:', typeof Produto);
+    console.log('🔍 [DESTAQUES] Método buscarProdutosDestaque existe:', typeof Produto.buscarProdutosDestaque);
     
     const limite = req.query.limite ? parseInt(req.query.limite) : 8;
-    console.log('🔍 Limite definido:', limite);
+    console.log('🔍 [DESTAQUES] Limite definido:', limite);
     
+    console.log('🔍 [DESTAQUES] Tentando chamar Produto.buscarProdutosDestaque...');
     const produtos = await Produto.buscarProdutosDestaque(limite);
     
-    console.log('✅ Produtos encontrados:', produtos.length);
+    console.log('✅ [DESTAQUES] Produtos encontrados:', produtos ? produtos.length : 'null/undefined');
+    console.log('✅ [DESTAQUES] Dados dos produtos:', JSON.stringify(produtos, null, 2));
     
     res.json({
       sucesso: true,
       dados: produtos,
-      total: produtos.length
+      total: produtos ? produtos.length : 0,
+      debug: {
+        timestamp: new Date().toISOString(),
+        limite: limite,
+        metodosDisponeis: Object.getOwnPropertyNames(Produto)
+      }
     });
   } catch (erro) {
-    console.error('❌ Erro detalhado ao buscar produtos em destaque:', erro);
-    console.error('❌ Stack trace:', erro.stack);
+    console.error('❌ [DESTAQUES] Erro detalhado:', erro);
+    console.error('❌ [DESTAQUES] Nome do erro:', erro.name);
+    console.error('❌ [DESTAQUES] Mensagem:', erro.message);
+    console.error('❌ [DESTAQUES] Stack trace:', erro.stack);
+    console.error('❌ [DESTAQUES] Código do erro:', erro.code);
+    console.error('❌ [DESTAQUES] SQL State:', erro.sqlState);
+    console.error('❌ [DESTAQUES] SQL Message:', erro.sqlMessage);
+    
     res.status(500).json({
       sucesso: false,
       mensagem: 'Erro interno do servidor ao buscar produtos em destaque',
-      erro: process.env.NODE_ENV === 'development' ? erro.message : undefined
+      erro: erro.message,
+      debug: {
+        timestamp: new Date().toISOString(),
+        errorName: erro.name,
+        sqlCode: erro.code,
+        sqlState: erro.sqlState,
+        metodosDisponiveis: Object.getOwnPropertyNames(Produto)
+      }
     });
   }
 });

@@ -345,10 +345,15 @@ class Produto {  constructor(dados) {
       throw new Error('Erro interno do servidor ao obter estatísticas');
     }
   }
-
   // Método específico para buscar produtos em destaque
   static async buscarProdutosDestaque(limite = 8) {
+    console.log('🚀 [MODELO] buscarProdutosDestaque chamado com limite:', limite);
+    
     try {
+      // Verificar se a conexão está disponível
+      console.log('🔍 [MODELO] Verificando conexão:', typeof conexao);
+      console.log('🔍 [MODELO] Método executarConsulta disponível:', typeof conexao.executarConsulta);
+      
       const sql = `
         SELECT p.* FROM produtos p
         INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id
@@ -361,11 +366,29 @@ class Produto {  constructor(dados) {
         LIMIT ?
       `;
       
+      console.log('🔍 [MODELO] SQL preparado:', sql);
+      console.log('🔍 [MODELO] Parâmetros:', [limite]);
+      
+      console.log('🔍 [MODELO] Executando consulta...');
       const resultados = await conexao.executarConsulta(sql, [limite]);
-      return resultados.map(produto => new Produto(produto));
+      
+      console.log('✅ [MODELO] Consulta executada com sucesso');
+      console.log('✅ [MODELO] Número de resultados:', resultados ? resultados.length : 'null/undefined');
+      console.log('✅ [MODELO] Dados brutos:', JSON.stringify(resultados, null, 2));
+      
+      const produtosMapeados = resultados.map(produto => new Produto(produto));
+      console.log('✅ [MODELO] Produtos mapeados:', produtosMapeados.length);
+      
+      return produtosMapeados;
     } catch (erro) {
-      console.error('Erro ao buscar produtos em destaque:', erro);
-      throw new Error('Erro interno do servidor ao buscar produtos em destaque');
+      console.error('❌ [MODELO] Erro detalhado ao buscar produtos em destaque:', erro);
+      console.error('❌ [MODELO] Nome do erro:', erro.name);
+      console.error('❌ [MODELO] Mensagem:', erro.message);
+      console.error('❌ [MODELO] Stack trace:', erro.stack);
+      console.error('❌ [MODELO] Código SQL:', erro.code);
+      console.error('❌ [MODELO] Estado SQL:', erro.sqlState);
+      console.error('❌ [MODELO] Mensagem SQL:', erro.sqlMessage);
+      throw new Error(`Erro interno do servidor ao buscar produtos em destaque: ${erro.message}`);
     }
   }
 }

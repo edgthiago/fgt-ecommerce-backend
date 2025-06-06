@@ -31,14 +31,30 @@ class ConexaoBanco {
             process.exit(1);
         }
     }    async executarConsulta(sql, parametros = []) {
+        console.log('🔍 [DB] Executando consulta:', sql);
+        console.log('🔍 [DB] Parâmetros:', parametros);
+        console.log('🔍 [DB] Pool status - used:', this.pool._used, 'free:', this.pool._free);
+        
         try {
+            const startTime = Date.now();
             // Usando query() ao invés de execute() para resolver problema com prepared statements
             const [resultados] = await this.pool.query(sql, parametros);
+            const endTime = Date.now();
+            
+            console.log('✅ [DB] Consulta executada com sucesso em', endTime - startTime, 'ms');
+            console.log('✅ [DB] Número de resultados:', Array.isArray(resultados) ? resultados.length : 'não é array');
+            console.log('✅ [DB] Tipo de resultado:', typeof resultados);
+            
             return resultados;
         } catch (erro) {
-            console.error('❌ Erro na consulta MySQL:', erro.message);
-            console.error('📝 SQL:', sql);
-            console.error('🔧 Parâmetros:', parametros);
+            console.error('❌ [DB] Erro detalhado na consulta MySQL:');
+            console.error('❌ [DB] Mensagem:', erro.message);
+            console.error('❌ [DB] Código:', erro.code);
+            console.error('❌ [DB] Estado SQL:', erro.sqlState);
+            console.error('❌ [DB] Errno:', erro.errno);
+            console.error('❌ [DB] SQL:', sql);
+            console.error('❌ [DB] Parâmetros:', parametros);
+            console.error('❌ [DB] Stack:', erro.stack);
             throw erro;
         }
     }
