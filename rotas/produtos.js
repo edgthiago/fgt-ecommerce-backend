@@ -38,6 +38,79 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/produtos/debug-railway - Endpoint de diagnóstico temporário
+router.get('/debug-railway', async (req, res) => {
+  console.log('🔍 [DEBUG] Endpoint de diagnóstico chamado');
+  
+  try {
+    // Verificar variáveis de ambiente
+    const env = {
+      DB_HOST: process.env.DB_HOST,
+      DB_USER: process.env.DB_USER,
+      DB_NAME: process.env.DB_NAME,
+      NODE_ENV: process.env.NODE_ENV,
+      hasPassword: !!process.env.DB_PASSWORD
+    };
+    
+    console.log('🔍 [DEBUG] Variáveis de ambiente:', env);
+    
+    // Testar conexão básica
+    const conexao = require('../banco/conexao');
+    console.log('🔍 [DEBUG] Objeto conexão:', typeof conexao);
+    
+    // Listar tabelas
+    const tabelas = await conexao.executarConsulta('SHOW TABLES');
+    console.log('🔍 [DEBUG] Tabelas encontradas:', tabelas.length);
+    
+    // Verificar tabela promocoes_relampago especificamente
+    let estruturaPromocoes = null;
+    let dadosPromocoes = null;
+    
+    try {
+      estruturaPromocoes = await conexao.executarConsulta('DESCRIBE promocoes_relampago');
+      dadosPromocoes = await conexao.executarConsulta('SELECT COUNT(*) as total FROM promocoes_relampago');
+    } catch (erro) {
+      console.log('⚠️ [DEBUG] Erro com promocoes_relampago:', erro.message);
+    }
+    
+    // Testar Produto.buscarTodos() básico
+    const Produto = require('../modelos/Produto');
+    let produtosBasico = null;
+    
+    try {
+      produtosBasico = await Produto.buscarTodos({ limite: 3 });
+    } catch (erro) {
+      console.log('⚠️ [DEBUG] Erro com Produto.buscarTodos():', erro.message);
+    }
+    
+    res.json({
+      sucesso: true,
+      debug: {
+        timestamp: new Date().toISOString(),
+        ambiente: env,
+        tabelas: tabelas.map(t => Object.values(t)[0]),
+        promocoes_relampago: {
+          estrutura_disponivel: !!estruturaPromocoes,
+          colunas: estruturaPromocoes ? estruturaPromocoes.length : 0,
+          total_registros: dadosPromocoes ? dadosPromocoes[0].total : 0
+        },
+        produtos_basico: {
+          funcionou: !!produtosBasico,
+          quantidade: produtosBasico ? produtosBasico.length : 0
+        }
+      }
+    });
+    
+  } catch (erro) {
+    console.error('❌ [DEBUG] Erro no diagnóstico:', erro);
+    res.status(500).json({
+      sucesso: false,
+      erro: erro.message,
+      stack: erro.stack
+    });
+  }
+});
+
 // GET /api/produtos/destaques - Buscar produtos em destaque (público)
 router.get('/destaques', async (req, res) => {
   console.log('🚀 [DESTAQUES] Endpoint chamado - Timestamp:', new Date().toISOString());
