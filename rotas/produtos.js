@@ -845,4 +845,140 @@ router.get('/teste-destaques', async (req, res) => {
   }
 });
 
+// Endpoint para corrigir estrutura da tabela no Railway
+router.get('/corrigir-estrutura', async (req, res) => {
+  console.log('🔧 [CORRIGIR] Iniciando correção de estrutura...');
+  
+  const relatorio = {
+    timestamp: new Date().toISOString(),
+    ambiente: process.env.NODE_ENV,
+    etapas: {}
+  };
+  
+  try {
+    // 1. Verificar estrutura atual
+    console.log('📋 [CORRIGIR] Verificando estrutura atual...');
+    const estruturaAtual = await conexao.executarConsulta('DESCRIBE promocoes_relampago');
+    relatorio.etapas.estrutura_inicial = {
+      total_colunas: estruturaAtual.length,
+      colunas: estruturaAtual.map(col => col.Field)
+    };
+    
+    // 2. Verificar colunas essenciais
+    const colunasEssenciais = ['nome', 'ativo', 'quantidade_limite', 'quantidade_vendida', 'criado_por', 'data_criacao'];
+    const colunasFaltantes = [];
+    
+    colunasEssenciais.forEach(coluna => {
+      const existe = estruturaAtual.find(col => col.Field === coluna);
+      if (!existe) {
+        colunasFaltantes.push(coluna);
+      }
+    });
+    
+    relatorio.etapas.analise = {
+      colunas_faltantes: colunasFaltantes
+    };
+    
+    // 3. Adicionar colunas faltantes
+    if (colunasFaltantes.length > 0) {
+      console.log('🔧 [CORRIGIR] Adicionando colunas faltantes...');
+      const resultadosAlteracao = {};
+      
+      for (const coluna of colunasFaltantes) {
+        try {
+          let sql = '';
+          switch (coluna) {
+            case 'nome':
+              sql = 'ALTER TABLE promocoes_relampago ADD COLUMN nome VARCHAR(255) NOT NULL DEFAULT "Promoção"';
+              break;
+            case 'ativo':
+              sql = 'ALTER TABLE promocoes_relampago ADD COLUMN ativo TINYINT(1) DEFAULT 1';
+              break;
+            case 'quantidade_limite':
+              sql = 'ALTER TABLE promocoes_relampago ADD COLUMN quantidade_limite INT DEFAULT NULL';
+              break;
+            case 'quantidade_vendida':
+              sql = 'ALTER TABLE promocoes_relampago ADD COLUMN quantidade_vendida INT DEFAULT 0';
+              break;
+            case 'criado_por':
+              sql = 'ALTER TABLE promocoes_relampago ADD COLUMN criado_por INT DEFAULT NULL';
+              break;
+            case 'data_criacao':
+              sql = 'ALTER TABLE promocoes_relampago ADD COLUMN data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+              break;
+          }
+          
+          if (sql) {
+            await conexao.executarConsulta(sql);
+            resultadosAlteracao[coluna] = 'sucesso';
+            console.log(`✅ [CORRIGIR] ${coluna} adicionada`);
+          }
+        } catch (erro) {
+          resultadosAlteracao[coluna] = erro.message;
+          console.log(`❌ [CORRIGIR] Erro em ${coluna}:`, erro.message);
+        }
+      }
+      
+      relatorio.etapas.alteracoes = resultadosAlteracao;
+    }
+    
+    // 4. Verificar estrutura final
+    const estruturaFinal = await conexao.executarConsulta('DESCRIBE promocoes_relampago');
+    relatorio.etapas.estrutura_final = {
+      total_colunas: estruturaFinal.length,
+      colunas: estruturaFinal.map(col => col.Field)
+    };
+    
+    // 5. Testar query problemática
+    try {
+      const teste = await conexao.executarConsulta(`
+        SELECT p.id, p.nome, pr.ativo 
+        FROM produtos p 
+        INNER JOIN promocoes_relampago pr ON p.id = pr.produto_id 
+        WHERE pr.ativo = 1
+        LIMIT 1
+      `);
+      relatorio.etapas.teste_query = {
+        sucesso: true,
+        registros: teste.length
+      };
+    } catch (erro) {
+      relatorio.etapas.teste_query = {
+        sucesso: false,
+        erro: erro.message
+      };
+    }
+    
+    // 6. Inserir dados se necessário
+    const totalRegistros = await conexao.executarConsulta('SELECT COUNT(*) as total FROM promocoes_relampago');
+    if (totalRegistros[0].total === 0) {
+      try {
+        await conexao.executarConsulta(`
+          INSERT INTO promocoes_relampago 
+          (nome, produto_id, desconto_percentual, preco_promocional, data_inicio, data_fim, ativo) 
+          VALUES 
+          ('Flash Sale Nike', 1, 40, 299.99, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 1),
+          ('Oferta Especial Adidas', 2, 35, 349.99, NOW(), DATE_ADD(NOW(), INTERVAL 25 DAY), 1)
+        `);
+        relatorio.etapas.dados_inseridos = true;
+      } catch (erro) {
+        relatorio.etapas.dados_inseridos = erro.message;
+      }
+    }
+    
+    res.json({
+      sucesso: true,
+      relatorio: relatorio
+    });
+    
+  } catch (erro) {
+    console.error('❌ [CORRIGIR] Erro geral:', erro);
+    res.status(500).json({
+      sucesso: false,
+      erro: erro.message,
+      relatorio_parcial: relatorio
+    });
+  }
+});
+
 module.exports = router;
